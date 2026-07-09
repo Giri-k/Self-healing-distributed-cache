@@ -1,42 +1,61 @@
 package com.cache.grpc;
 
 import com.cache.grpc.generated.*;
+import com.cache.storage.CacheEntry;
+import com.cache.storage.StorageEngine;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 
 @GrpcService
 public class CacheGrpcService extends CacheServiceGrpc.CacheServiceImplBase {
 
+    private final StorageEngine storageEngine;
+
+    public CacheGrpcService(StorageEngine storageEngine) {
+        this.storageEngine = storageEngine;
+    }
+
     @Override
     public void get(GetRequest request, StreamObserver<GetResponse> responseObserver) {
-        responseObserver.onNext(
-            GetResponse
-                .newBuilder()
-                .setValue("Hello, " + request.getKey())
-                .build()
-            );
+        CacheEntry entry = storageEngine.get(request.getKey());
+
+        GetResponse response;
+        if (entry == null) {
+            response = GetResponse.newBuilder()
+                .setFound(false)
+                .build();
+        } else {
+            response = GetResponse.newBuilder()
+                .setValue(entry.getValue())
+                .setFound(true)
+                .build();
+        }
+
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
     @Override
     public void set(SetRequest request, StreamObserver<SetResponse> responseObserver) {
-        responseObserver.onNext(
-            SetResponse
-                .newBuilder()
-                .setSuccess(true)
-                .build()
-            );
+        storageEngine.set(request.getKey(), request.getValue(), request.getTtlSeconds());
+
+        SetResponse response = SetResponse.newBuilder()
+            .setSuccess(true)
+            .build();
+
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
     @Override
     public void delete(DeleteRequest request, StreamObserver<DeleteResponse> responseObserver) {
-        responseObserver.onNext(
-            DeleteResponse
-                .newBuilder()
-                .setSuccess(true)
-                .build()
-            );
+        boolean deleted = storageEngine.delete(request.getKey());
+
+        DeleteResponse response = DeleteResponse.newBuilder()
+            .setSuccess(deleted)
+            .build();
+
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 }
