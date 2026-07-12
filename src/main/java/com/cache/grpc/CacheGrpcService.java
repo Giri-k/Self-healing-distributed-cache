@@ -2,7 +2,7 @@ package com.cache.grpc;
 
 import com.cache.grpc.generated.*;
 import com.cache.storage.CacheEntry;
-//import com.cache.storage.StorageEngine;
+import com.cache.storage.StorageEngine;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import com.cache.cluster.ClusterService;
@@ -10,12 +10,13 @@ import com.cache.cluster.ClusterService;
 @GrpcService
 public class CacheGrpcService extends CacheServiceGrpc.CacheServiceImplBase {
 
-    // private final StorageEngine storageEngine;
+    private final StorageEngine storageEngine;
 
     private final ClusterService clusterService;
 
-    public CacheGrpcService(ClusterService clusterService) {
+    public CacheGrpcService(ClusterService clusterService, StorageEngine storageEngine) {
         this.clusterService = clusterService;
+        this.storageEngine = storageEngine;
     }
 
     @Override
@@ -58,6 +59,24 @@ public class CacheGrpcService extends CacheServiceGrpc.CacheServiceImplBase {
             .setSuccess(deleted)
             .build();
 
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void replicate(ReplicateRequest request, StreamObserver<ReplicateResponse> responseObserver){
+
+        storageEngine.setReplica(
+            request.getKey(),
+            request.getValue(),
+            request.getVersion(),
+            request.getExpiresAt()
+        );
+
+        ReplicateResponse response = ReplicateResponse.newBuilder()
+            .setSuccess(true)
+            .build();
+        
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }

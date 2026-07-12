@@ -17,12 +17,19 @@ public class NodeConfig {
     @Value("${cache.virtual-nodes:150}")
     private int virtualNodes;
 
+    @Value("${cache.replication-factor:2}")
+    private int replicationFactor;
+
     public String getNodeId(){
         return nodeId;
     }
 
     public int getVirtualNodes(){
         return virtualNodes;
+    }
+
+    public int getReplicationFactor() {
+        return replicationFactor;
     }
 
     public Map<String, String> getPeers(){

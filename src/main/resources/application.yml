@@ -11,3 +11,4 @@ cache:
   node-id: node-1
   peers: node-2:localhost:9091,node-3:localhost:9092
   virtual-nodes: 150
+  replication-factor: 2

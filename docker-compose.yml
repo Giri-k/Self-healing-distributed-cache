@@ -9,6 +9,7 @@ services:
       - CACHE_NODE_ID=node-1
       - CACHE_PEERS=node-2:node-2:9090,node-3:node-3:9090
       - CACHE_VIRTUAL_NODES=150
+      - CACHE_REPLICATION_FACTOR=2
 
   node-2:
     build: .
@@ -19,6 +20,7 @@ services:
       - CACHE_NODE_ID=node-2
       - CACHE_PEERS=node-1:node-1:9090,node-3:node-3:9090
       - CACHE_VIRTUAL_NODES=150
+      - CACHE_REPLICATION_FACTOR=2
 
   node-3:
     build: .
@@ -29,3 +31,4 @@ services:
       - CACHE_NODE_ID=node-3
       - CACHE_PEERS=node-1:node-1:9090,node-2:node-2:9090
       - CACHE_VIRTUAL_NODES=150
+      - CACHE_REPLICATION_FACTOR=2

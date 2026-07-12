@@ -1,5 +1,7 @@
 package com.cache.storage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -10,6 +12,8 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class StorageEngine {
+    private static final Logger log = LoggerFactory.getLogger(StorageEngine.class);
+
     private final ConcurrentHashMap<String, CacheEntry> store;
     private final ScheduledExecutorService cleanupExecutor;
 
@@ -42,11 +46,23 @@ public class StorageEngine {
         return store.remove(key) != null;
     }
 
+    public void setReplica(String key, String value, long version, long expiresAt){
+        CacheEntry existing = store.get(key);
+        if(existing==null || version>=existing.getVersion())
+            store.put(key, new CacheEntry(value, version, expiresAt));
+    }
+
     @PostConstruct
     public void startCleanup() {
-        cleanupExecutor.scheduleAtFixedRate(
-            () -> store.entrySet().removeIf(e -> e.getValue().isExpired()),
-            10, 10, TimeUnit.SECONDS);
+        log.info("Starting background expiry sweep (every 10s)");
+        cleanupExecutor.scheduleAtFixedRate(() -> {
+            int before = store.size();
+            store.entrySet().removeIf(e -> e.getValue().isExpired());
+            int expired = before - store.size();
+            if (expired > 0) {
+                log.info("Sweep removed {} expired keys, {} remaining", expired, store.size());
+            }
+        }, 10, 10, TimeUnit.SECONDS);
     }
 
     @PreDestroy

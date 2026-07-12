@@ -9,6 +9,7 @@ service CacheService {
     rpc Get (GetRequest) returns (GetResponse);
     rpc Set (SetRequest) returns (SetResponse);
     rpc Delete (DeleteRequest) returns (DeleteResponse);
+    rpc Replicate (ReplicateRequest) returns (ReplicateResponse);
 }
 
 message GetRequest {
@@ -35,5 +36,16 @@ message DeleteRequest {
 }
 
 message DeleteResponse {
+    bool success = 1;
+}
+
+message ReplicateRequest {
+    string key = 1;
+    string value = 2;
+    int64 version = 3;
+    int64 expires_at = 4;
+}
+
+message ReplicateResponse {
     bool success = 1;
 }

@@ -8,13 +8,18 @@ import com.cache.grpc.generated.*;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
 
 @Component
 public class ClusterService {
+
+    private static final Logger log = LoggerFactory.getLogger(ClusterService.class);
 
     private final ConsistentHashRing ring;
     private final NodeConfig config;
@@ -29,32 +34,32 @@ public class ClusterService {
 
     @PostConstruct
     public void init() {
-        // Add this node to the ring
         ring.addNode(config.getNodeId());
+        log.info("Added self to ring: {}", config.getNodeId());
 
-        // Add all peers to the ring and create gRPC client stubs
         for (Map.Entry<String, String> peer : config.getPeers().entrySet()) {
             String peerId = peer.getKey();
             String address = peer.getValue();
 
             ring.addNode(peerId);
 
-            // create a ManagedChannel to 'address'
-            // create a CacheServiceBlockingStub from that channel
-            // put the stub in the stubs map with peerId as key
             ManagedChannel channel = ManagedChannelBuilder.forTarget(address)
                 .usePlaintext()
                 .build();
             stubs.put(peerId, CacheServiceGrpc.newBlockingStub(channel));
+            log.info("Connected to peer: {} at {}", peerId, address);
         }
+
+        log.info("Cluster initialized with {} nodes", ring.getSize());
     }
 
     public CacheEntry get(String key) {
         String owner = ring.getNode(key);
         if (owner.equals(config.getNodeId())) {
+            log.debug("GET key={} handled locally", key);
             return storageEngine.get(key);
         } else {
-            // TODO: forward via gRPC stub
+            log.debug("GET key={} forwarding to {}", key, owner);
             GetResponse resp = stubs.get(owner).get(
                 GetRequest.newBuilder().setKey(key).build()
             );
@@ -67,29 +72,63 @@ public class ClusterService {
     }
 
     public void set(String key, String value, long ttlSeconds) {
-        String owner = ring.getNode(key);
-        if (owner.equals(config.getNodeId())) {
-            // handle locally
+        List<String> owners = ring.getNodes(key, config.getReplicationFactor());
+        String primary = owners.get(0);
+        
+        if (primary.equals(config.getNodeId())) {
+            log.debug("SET key={} handled locally", key);
             storageEngine.set(key, value, ttlSeconds);
+            CacheEntry entry = storageEngine.get(key);
+            for(int i=1; i<owners.size(); i++){
+                String replicateId = owners.get(i);
+                replicateToNode(replicateId, key, entry);
+            }
         } else {
-            //  forward via gRPC stub
-            stubs.get(owner).set(
+            log.debug("SET key={} forwarding to {}", key, primary);
+            stubs.get(primary).set(
                 SetRequest.newBuilder().setKey(key).setValue(value).setTtlSeconds(ttlSeconds).build()
             );
         }
     }
 
     public boolean delete(String key) {
-        String owner = ring.getNode(key);
-        if (owner.equals(config.getNodeId())) {
-            // TODO: handle locally
-            return storageEngine.delete(key);
+        List<String> owners = ring.getNodes(key, config.getReplicationFactor());
+        String primary = owners.get(0);
+        if (primary.equals(config.getNodeId())) {
+            log.debug("DELETE key={} handled locally", key);
+            boolean deleted = storageEngine.delete(key);
+
+            for(int i=1; i<owners.size(); i++){
+                String replicateId = owners.get(i);
+                CacheServiceGrpc.CacheServiceBlockingStub stub = stubs.get(replicateId);
+                if (stub != null) {
+                    stub.delete(DeleteRequest.newBuilder()
+                        .setKey(key).build());
+                }
+            }
+            return deleted;
         } else {
-            // TODO: forward via gRPC stub
-            DeleteResponse resp = stubs.get(owner).delete(
+            log.debug("DELETE key={} forwarding to {}", key, primary);
+            DeleteResponse resp = stubs.get(primary).delete(
                 DeleteRequest.newBuilder().setKey(key).build()
             );
             return resp.getSuccess();
         }
     }
+
+    private void replicateToNode(String nodeId, String key, CacheEntry entry){
+        CacheServiceGrpc.CacheServiceBlockingStub stub = stubs.get(nodeId);
+        if(stub != null){
+            stub.replicate(
+                ReplicateRequest.newBuilder()
+                    .setKey(key)
+                    .setValue(entry.getValue())
+                    .setVersion(entry.getVersion())
+                    .setExpiresAt(entry.getExpiresAt())
+                    .build()
+            );
+        }
+    }
+
+
 }
