@@ -116,6 +116,20 @@ public class ClusterService {
         }
     }
 
+    public void removeNode(String nodeId) {
+        ring.removeNode(nodeId);
+        log.warn("Removed node {} from ring, {} nodes remain", nodeId, ring.getSize());
+    }
+
+    public void addNode(String nodeId) {
+        ring.addNode(nodeId);
+        log.info("Added node {} to ring, {} nodes total", nodeId, ring.getSize());
+    }
+
+    public Map<String, CacheServiceGrpc.CacheServiceBlockingStub> getStubs() {
+        return stubs;
+    }
+
     private void replicateToNode(String nodeId, String key, CacheEntry entry){
         CacheServiceGrpc.CacheServiceBlockingStub stub = stubs.get(nodeId);
         if(stub != null){

@@ -1,11 +1,13 @@
 package com.cache.config;
 
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.HashMap;
 
 @Component
+@Getter
 public class NodeConfig {
 
     @Value("${cache.node-id}")
@@ -20,17 +22,14 @@ public class NodeConfig {
     @Value("${cache.replication-factor:2}")
     private int replicationFactor;
 
-    public String getNodeId(){
-        return nodeId;
-    }
+    @Value("${cache.ping-interval-ms:1000}")
+    private long pingIntervalMs;
 
-    public int getVirtualNodes(){
-        return virtualNodes;
-    }
+    @Value("${cache.ping-timeout-ms:500}")
+    private long pingTimeoutMs;
 
-    public int getReplicationFactor() {
-        return replicationFactor;
-    }
+    @Value("${cache.suspect-timeout-ms:5000}")
+    private long suspectTimeoutMs;
 
     public Map<String, String> getPeers(){
         Map<String, String> peers = new HashMap<>();
@@ -42,5 +41,4 @@ public class NodeConfig {
         }
         return peers;
     }
-
 }

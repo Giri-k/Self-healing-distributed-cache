@@ -12,3 +12,6 @@ cache:
   peers: node-2:localhost:9091,node-3:localhost:9092
   virtual-nodes: 150
   replication-factor: 2
+  ping-interval-ms: 1000
+  ping-timeout-ms: 500
+  suspect-timeout-ms: 5000

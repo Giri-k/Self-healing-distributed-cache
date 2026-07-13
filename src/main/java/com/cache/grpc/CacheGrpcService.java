@@ -6,6 +6,10 @@ import com.cache.storage.StorageEngine;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import com.cache.cluster.ClusterService;
+import com.cache.config.NodeConfig;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import java.util.concurrent.TimeUnit;
 
 @GrpcService
 public class CacheGrpcService extends CacheServiceGrpc.CacheServiceImplBase {
@@ -14,9 +18,12 @@ public class CacheGrpcService extends CacheServiceGrpc.CacheServiceImplBase {
 
     private final ClusterService clusterService;
 
-    public CacheGrpcService(ClusterService clusterService, StorageEngine storageEngine) {
+    private final NodeConfig config;
+
+    public CacheGrpcService(ClusterService clusterService, StorageEngine storageEngine, NodeConfig config) {
         this.clusterService = clusterService;
         this.storageEngine = storageEngine;
+        this.config = config;
     }
 
     @Override
@@ -80,4 +87,51 @@ public class CacheGrpcService extends CacheServiceGrpc.CacheServiceImplBase {
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
+
+    @Override
+    public void ping(PingRequest request,
+                     StreamObserver<PingResponse> responseObserver) {
+        PingResponse response = PingResponse.newBuilder()
+            .setNodeId(config.getNodeId())
+            .setAlive(true)
+            .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void indirectPing(IndirectPingRequest request, StreamObserver<IndirectPingResponse> responseObserver) {
+
+        boolean alive = false;
+        try {
+            // Create a temporary channel to the target
+            ManagedChannel channel = ManagedChannelBuilder
+                .forTarget(request.getTargetAddress())
+                .usePlaintext()
+                .build();
+            CacheServiceGrpc.CacheServiceBlockingStub stub =
+                CacheServiceGrpc.newBlockingStub(channel);
+
+            PingResponse resp = stub
+                .withDeadlineAfter(500, TimeUnit.MILLISECONDS)
+                .ping(PingRequest.newBuilder()
+                    .setSenderId(config.getNodeId())
+                    .build());
+            alive = resp.getAlive();
+            channel.shutdown();
+        } catch (Exception e) {
+            alive = false;
+        }
+
+        IndirectPingResponse response = IndirectPingResponse
+            .newBuilder()
+            .setAlive(alive)
+            .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+
 }

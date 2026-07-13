@@ -10,6 +10,8 @@ service CacheService {
     rpc Set (SetRequest) returns (SetResponse);
     rpc Delete (DeleteRequest) returns (DeleteResponse);
     rpc Replicate (ReplicateRequest) returns (ReplicateResponse);
+    rpc Ping (PingRequest) returns (PingResponse);
+    rpc IndirectPing (IndirectPingRequest) returns (IndirectPingResponse);
 }
 
 message GetRequest {
@@ -48,4 +50,22 @@ message ReplicateRequest {
 
 message ReplicateResponse {
     bool success = 1;
+}
+
+message PingRequest {
+    string sender_id = 1;
+}
+
+message PingResponse {
+    string node_id = 1;
+    bool alive = 2;
+}
+
+message IndirectPingRequest {
+    string target_id = 1;
+    string target_address = 2;
+}
+
+message IndirectPingResponse {
+    bool alive = 1;
 }

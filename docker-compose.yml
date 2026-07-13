@@ -10,6 +10,9 @@ services:
       - CACHE_PEERS=node-2:node-2:9090,node-3:node-3:9090
       - CACHE_VIRTUAL_NODES=150
       - CACHE_REPLICATION_FACTOR=2
+      - CACHE_PING_INTERVAL_MS=1000
+      - CACHE_PING_TIMEOUT_MS=500
+      - CACHE_SUSPECT_TIMEOUT_MS=5000
 
   node-2:
     build: .
@@ -21,6 +24,9 @@ services:
       - CACHE_PEERS=node-1:node-1:9090,node-3:node-3:9090
       - CACHE_VIRTUAL_NODES=150
       - CACHE_REPLICATION_FACTOR=2
+      - CACHE_PING_INTERVAL_MS=1000
+      - CACHE_PING_TIMEOUT_MS=500
+      - CACHE_SUSPECT_TIMEOUT_MS=5000
 
   node-3:
     build: .
@@ -32,3 +38,6 @@ services:
       - CACHE_PEERS=node-1:node-1:9090,node-2:node-2:9090
       - CACHE_VIRTUAL_NODES=150
       - CACHE_REPLICATION_FACTOR=2
+      - CACHE_PING_INTERVAL_MS=1000
+      - CACHE_PING_TIMEOUT_MS=500
+      - CACHE_SUSPECT_TIMEOUT_MS=5000
