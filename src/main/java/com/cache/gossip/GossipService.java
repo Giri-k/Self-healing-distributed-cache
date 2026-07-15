@@ -12,6 +12,7 @@ import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import com.cache.cluster.RebalanceService;
 
 import java.util.List;
 import java.util.Map;
@@ -29,11 +30,13 @@ public class GossipService {
     private final ClusterService clusterService;
     private final NodeConfig config;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final RebalanceService rebalanceService;
 
-    public GossipService(NodeConfig config, ClusterService clusterService) {
+    public GossipService(NodeConfig config, ClusterService clusterService, RebalanceService rebalanceService) {
         this.config = config;
         this.clusterService = clusterService;
         this.membershipList = new MembershipList(config.getNodeId());
+        this.rebalanceService = rebalanceService;
     }
 
     @PostConstruct
@@ -59,17 +62,26 @@ public class GossipService {
         boolean alive = directPing(target);
 
         if(alive){
-            membershipList.markAlive(target);
+            handleAliveResponse(target);
             return;
         }
         log.debug("Direct ping to {} failed, trying indirect", target);
         boolean indirectAlive = indirectPing(target);
 
         if(indirectAlive){
-            membershipList.markAlive(target);
+            handleAliveResponse(target);
         }
         else{
             membershipList.markSuspected(target);
+        }
+    }
+
+    private void handleAliveResponse(String nodeId) {
+        MembershipList.NodeState prevState = membershipList.getState(nodeId);
+        membershipList.markAlive(nodeId);
+
+        if (prevState == MembershipList.NodeState.DEAD) {
+            onNodeAlive(nodeId);
         }
     }
 
@@ -131,11 +143,13 @@ public class GossipService {
     private void onNodeDead(String nodeId) {
         log.warn("Removing dead node {} from ring", nodeId);
         clusterService.removeNode(nodeId);
+        rebalanceService.onNodeLeft(nodeId);
     }
 
     private void onNodeAlive(String nodeId) {
         log.info("Node {} rejoined, adding to ring", nodeId);
         clusterService.addNode(nodeId);
+        rebalanceService.onNodeJoined(nodeId);
     }
 
     @PreDestroy

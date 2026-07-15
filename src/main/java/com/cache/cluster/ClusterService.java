@@ -130,6 +130,10 @@ public class ClusterService {
         return stubs;
     }
 
+    public ConsistentHashRing getRing() {
+        return ring;
+    }
+
     private void replicateToNode(String nodeId, String key, CacheEntry entry){
         CacheServiceGrpc.CacheServiceBlockingStub stub = stubs.get(nodeId);
         if(stub != null){

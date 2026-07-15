@@ -9,6 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.HashMap;
 
 @Component
 public class StorageEngine {
@@ -51,6 +53,11 @@ public class StorageEngine {
         if(existing==null || version>=existing.getVersion())
             store.put(key, new CacheEntry(value, version, expiresAt));
     }
+
+    public Map<String, CacheEntry> getAllEntries() {
+        return new HashMap<>(store);
+    }
+
 
     @PostConstruct
     public void startCleanup() {

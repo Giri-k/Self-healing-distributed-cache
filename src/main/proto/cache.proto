@@ -12,6 +12,7 @@ service CacheService {
     rpc Replicate (ReplicateRequest) returns (ReplicateResponse);
     rpc Ping (PingRequest) returns (PingResponse);
     rpc IndirectPing (IndirectPingRequest) returns (IndirectPingResponse);
+    rpc StreamKeys (StreamKeysRequest) returns (stream StreamKeysResponse);
 }
 
 message GetRequest {
@@ -68,4 +69,15 @@ message IndirectPingRequest {
 
 message IndirectPingResponse {
     bool alive = 1;
+}
+
+message StreamKeysRequest {
+    string requesting_node_id = 1;
+}
+
+message StreamKeysResponse {
+    string key = 1;
+    string value = 2;
+    int64 version = 3;
+    int64 expires_at = 4;
 }

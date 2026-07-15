@@ -11,6 +11,8 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.util.concurrent.TimeUnit;
 
+import java.util.Map;
+
 @GrpcService
 public class CacheGrpcService extends CacheServiceGrpc.CacheServiceImplBase {
 
@@ -130,6 +132,26 @@ public class CacheGrpcService extends CacheServiceGrpc.CacheServiceImplBase {
             .build();
 
         responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void streamKeys(StreamKeysRequest request, StreamObserver<StreamKeysResponse> responseObserver) {
+
+        Map<String, CacheEntry> allEntries = storageEngine.getAllEntries();
+
+        for (Map.Entry<String, CacheEntry> entry : allEntries.entrySet()) {
+            StreamKeysResponse response = StreamKeysResponse
+                .newBuilder()
+                .setKey(entry.getKey())
+                .setValue(entry.getValue().getValue())
+                .setVersion(entry.getValue().getVersion())
+                .setExpiresAt(entry.getValue().getExpiresAt())
+                .build();
+
+            responseObserver.onNext(response);
+        }
+
         responseObserver.onCompleted();
     }
 
