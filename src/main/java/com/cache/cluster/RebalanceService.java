@@ -34,10 +34,14 @@ public class RebalanceService {
 
         for (Map.Entry<String, CacheEntry> entry : allEntries.entrySet()) {
             String key = entry.getKey();
+            CacheEntry cacheEntry = entry.getValue();
+
+            if (cacheEntry.isExpired()) continue;
+
             String newOwner = clusterService.getRing().getNode(key);
 
             if (newOwner.equals(nodeId)) {
-                sendKeyToNode(nodeId, key, entry.getValue());
+                sendKeyToNode(nodeId, key, cacheEntry);
                 sent++;
             }
         }

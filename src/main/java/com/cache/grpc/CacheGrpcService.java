@@ -141,6 +141,8 @@ public class CacheGrpcService extends CacheServiceGrpc.CacheServiceImplBase {
         Map<String, CacheEntry> allEntries = storageEngine.getAllEntries();
 
         for (Map.Entry<String, CacheEntry> entry : allEntries.entrySet()) {
+            if (entry.getValue().isExpired()) continue;
+
             StreamKeysResponse response = StreamKeysResponse
                 .newBuilder()
                 .setKey(entry.getKey())
